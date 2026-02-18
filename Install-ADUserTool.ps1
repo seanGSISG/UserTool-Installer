@@ -26,7 +26,7 @@ $ErrorActionPreference = 'Stop'
 # --- Configuration ---
 $GitHubOwner      = 'gsisg-inc'
 $GitHubRepo       = 'UserTool'
-$OAuthClientId    = 'Ov23li...'   # TODO: Replace with your OAuth App Client ID after creating it
+$OAuthClientId    = 'Ov23lisVZVGiAnAuNn3D'
 $DestPath         = 'C:\IT\UserTool'
 $CredentialTarget = 'UserTool:GitHub:DeviceFlow'
 $ApiBase          = 'https://api.github.com'
