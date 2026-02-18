@@ -26,7 +26,7 @@ $ErrorActionPreference = 'Stop'
 # --- Configuration ---
 $GitHubOwner      = 'gsisg-inc'
 $GitHubRepo       = 'UserTool'
-$OAuthClientId    = 'Ov23lisVZVGiAnAuNn3D'
+$OAuthClientId    = 'Ov23li6evcd0dpujAjqt'
 $DestPath         = 'C:\IT\UserTool'
 $CredentialTarget = 'UserTool:GitHub:DeviceFlow'
 $ApiBase          = 'https://api.github.com'
