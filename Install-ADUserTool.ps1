@@ -329,7 +329,12 @@ try
     if ($isUpdate -and $localVersion -and ($localVersion -eq $remoteVersion))
     {
         Write-Host "AD User Tool is already up to date ($remoteVersion)" -ForegroundColor Green
-        Read-Host "`nPress Enter to close"
+        Write-Host ""
+        for ($i = 5; $i -ge 1; $i--)
+        {
+            Write-Host "`rClosing in $i..." -NoNewline -ForegroundColor Gray
+            Start-Sleep -Seconds 1
+        }
         return
     }
 
