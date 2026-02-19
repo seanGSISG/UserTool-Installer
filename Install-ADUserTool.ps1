@@ -184,18 +184,15 @@ function Invoke-DeviceFlow
             } elseif ($tokenResponse.error -eq 'expired_token')
             {
                 Write-Host ""
-                Write-Error "Device code expired. Please run the installer again."
-                exit 1
+                throw "Device code expired. Please run the installer again."
             } elseif ($tokenResponse.error -eq 'access_denied')
             {
                 Write-Host ""
-                Write-Error "Authorization was denied."
-                exit 1
+                throw "Authorization was denied."
             } elseif ($tokenResponse.error)
             {
                 Write-Host ""
-                Write-Error "OAuth error: $($tokenResponse.error) - $($tokenResponse.error_description)"
-                exit 1
+                throw "OAuth error: $($tokenResponse.error) - $($tokenResponse.error_description)"
             }
         } catch
         {
@@ -204,8 +201,7 @@ function Invoke-DeviceFlow
     }
 
     Write-Host ""
-    Write-Error "Authorization timed out. Please run the installer again."
-    exit 1
+    throw "Authorization timed out. Please run the installer again."
 }
 
 function Get-GitHubToken
@@ -254,8 +250,7 @@ function Install-ReleaseAsset
     $asset = $release.assets | Where-Object { $_.name -match '\.zip$' } | Select-Object -First 1
     if (-not $asset)
     {
-        Write-Error "No zip asset found in release $($release.tag_name)"
-        exit 1
+        throw "No zip asset found in release $($release.tag_name)"
     }
 
     # Download the asset
@@ -309,43 +304,50 @@ function Install-ReleaseAsset
 }
 
 # --- Main ---
-Write-Host "`n=== AD User Tool Installer ===" -ForegroundColor Cyan
-Write-Host "Source: github.com/$GitHubOwner/$GitHubRepo" -ForegroundColor Gray
-
-# Authenticate
-$token = Get-GitHubToken
-
-# Get latest release info
-$release = Get-LatestRelease $token
-$remoteVersion = $release.tag_name
-
-# Check local version
-$versionFile = Join-Path $DestPath '.version'
-$localVersion = $null
-if (Test-Path $versionFile)
+try
 {
-    $localVersion = (Get-Content $versionFile -Raw).Trim()
+    Write-Host "`n=== AD User Tool Installer ===" -ForegroundColor Cyan
+    Write-Host "Source: github.com/$GitHubOwner/$GitHubRepo" -ForegroundColor Gray
+
+    # Authenticate
+    $token = Get-GitHubToken
+
+    # Get latest release info
+    $release = Get-LatestRelease $token
+    $remoteVersion = $release.tag_name
+
+    # Check local version
+    $versionFile = Join-Path $DestPath '.version'
+    $localVersion = $null
+    if (Test-Path $versionFile)
+    {
+        $localVersion = (Get-Content $versionFile -Raw).Trim()
+    }
+
+    $isUpdate = Test-Path $DestPath
+
+    if ($isUpdate -and $localVersion -and ($localVersion -eq $remoteVersion))
+    {
+        Write-Host "AD User Tool is already up to date ($remoteVersion)" -ForegroundColor Green
+        return
+    }
+
+    if ($isUpdate)
+    {
+        Write-Host "Updating: $localVersion -> $remoteVersion" -ForegroundColor Yellow
+    } else
+    {
+        Write-Host "Fresh install: $remoteVersion" -ForegroundColor Yellow
+    }
+
+    # Download and install
+    Install-ReleaseAsset -Token $token -Release $release
+
+    # Run full setup
+    Write-Host "`nRunning setup..." -ForegroundColor Yellow
+    & "$DestPath\Setup-ADUserTool.ps1"
+} catch
+{
+    Write-Host "`nInstaller error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Run the command again or check https://github.com/gsisg-inc/UserTool/issues" -ForegroundColor Gray
 }
-
-$isUpdate = Test-Path $DestPath
-
-if ($isUpdate -and $localVersion -and ($localVersion -eq $remoteVersion))
-{
-    Write-Host "AD User Tool is already up to date ($remoteVersion)" -ForegroundColor Green
-    exit 0
-}
-
-if ($isUpdate)
-{
-    Write-Host "Updating: $localVersion -> $remoteVersion" -ForegroundColor Yellow
-} else
-{
-    Write-Host "Fresh install: $remoteVersion" -ForegroundColor Yellow
-}
-
-# Download and install
-Install-ReleaseAsset -Token $token -Release $release
-
-# Run full setup
-Write-Host "`nRunning setup..." -ForegroundColor Yellow
-& "$DestPath\Setup-ADUserTool.ps1"
