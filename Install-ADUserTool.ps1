@@ -314,9 +314,10 @@ function Install-ReleaseAsset
                 $dst = Join-Path $DestPath $dir
                 try
                 {
-                    # Remove empty dir left by zip extraction to avoid nesting
-                    if (Test-Path $dst) { Remove-Item -Path $dst -Recurse -Force }
-                    Move-Item -Path $src -Destination $dst -Force
+                    # Ensure destination exists, then move contents (not the folder itself) to avoid nesting
+                    if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }
+                    Get-ChildItem -Path $src -Force | Move-Item -Destination $dst -Force
+                    Remove-Item -Path $src -Recurse -Force -ErrorAction SilentlyContinue
                     Write-Host "Restored $dir" -ForegroundColor Gray
                 } catch
                 {
