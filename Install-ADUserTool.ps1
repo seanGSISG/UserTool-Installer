@@ -273,26 +273,15 @@ function Install-ReleaseAsset
         Write-Host "Created $parentDir" -ForegroundColor Gray
     }
 
-    # Preserve user data directories during update
+    # Remove old app files but preserve user data directories
     $preserveDirs = @('Tickets', 'UserCreationHTML', 'UserCreationLogs', 'UserReports')
-    $stagingPath  = Join-Path $env:TEMP 'UserTool-upgrade'
 
     if (Test-Path $DestPath)
     {
-        # Move user data to temp staging
-        foreach ($dir in $preserveDirs)
-        {
-            $src = Join-Path $DestPath $dir
-            if (Test-Path $src)
-            {
-                $dst = Join-Path $stagingPath $dir
-                New-Item -ItemType Directory -Path (Split-Path $dst -Parent) -Force | Out-Null
-                Move-Item -Path $src -Destination $dst -Force
-            }
-        }
-
         Write-Host "Removing old installation..." -ForegroundColor Gray
-        Remove-Item -Path $DestPath -Recurse -Force
+        Get-ChildItem -Path $DestPath -Force |
+            Where-Object { $_.Name -notin $preserveDirs } |
+            Remove-Item -Recurse -Force
     }
 
     # Extract
@@ -302,31 +291,6 @@ function Install-ReleaseAsset
 
     # Clean up temp file
     Remove-Item -Path $tempZip -Force -ErrorAction SilentlyContinue
-
-    # Restore preserved user data directories
-    if (Test-Path $stagingPath)
-    {
-        foreach ($dir in $preserveDirs)
-        {
-            $src = Join-Path $stagingPath $dir
-            if (Test-Path $src)
-            {
-                $dst = Join-Path $DestPath $dir
-                try
-                {
-                    # Ensure destination exists, then move contents (not the folder itself) to avoid nesting
-                    if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }
-                    Get-ChildItem -Path $src -Force | Move-Item -Destination $dst -Force
-                    Remove-Item -Path $src -Recurse -Force -ErrorAction SilentlyContinue
-                    Write-Host "Restored $dir" -ForegroundColor Gray
-                } catch
-                {
-                    Write-Host "WARNING: Could not restore $dir — data preserved at $src" -ForegroundColor Yellow
-                }
-            }
-        }
-        Remove-Item -Path $stagingPath -Recurse -Force -ErrorAction SilentlyContinue
-    }
 
     # Write version file
     $Release.tag_name | Set-Content -Path (Join-Path $DestPath '.version') -Encoding UTF8
