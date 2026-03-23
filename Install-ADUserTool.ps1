@@ -273,6 +273,22 @@ function Install-ReleaseAsset
         Write-Host "Created $parentDir" -ForegroundColor Gray
     }
 
+    # Backup user-specific config values before wipe
+    $savedZammadToken = $null
+    $configFile = Join-Path $DestPath 'ADUserManagement\Data\Config.psd1'
+    if (Test-Path $configFile)
+    {
+        try
+        {
+            $existingConfig = Import-PowerShellDataFile -Path $configFile -ErrorAction Stop
+            if ($existingConfig.ZammadApiToken)
+            {
+                $savedZammadToken = $existingConfig.ZammadApiToken
+                Write-Host "Backed up Zammad API token" -ForegroundColor Gray
+            }
+        } catch { }
+    }
+
     # Remove old app files but preserve user data directories
     $preserveDirs = @('Tickets', 'UserCreationHTML', 'UserCreationLogs', 'UserReports')
 
@@ -296,6 +312,19 @@ function Install-ReleaseAsset
     $Release.tag_name | Set-Content -Path (Join-Path $DestPath '.version') -Encoding UTF8
 
     Write-Host "Files extracted to $DestPath" -ForegroundColor Green
+
+    # Restore user-specific config values
+    if ($savedZammadToken)
+    {
+        $newConfigFile = Join-Path $DestPath 'ADUserManagement\Data\Config.psd1'
+        if (Test-Path $newConfigFile)
+        {
+            $content = Get-Content -Path $newConfigFile -Raw
+            $content = $content -replace "ZammadApiToken\s*=\s*''", "ZammadApiToken = '$savedZammadToken'"
+            Set-Content -Path $newConfigFile -Value $content -Encoding UTF8 -NoNewline
+            Write-Host "Restored Zammad API token" -ForegroundColor Green
+        }
+    }
 
     # Unblock all scripts
     $blockedFiles = Get-ChildItem -Path $DestPath -Recurse -Include *.ps1, *.psm1, *.psd1
